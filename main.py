@@ -1,6 +1,6 @@
 import pygame
 from sys import exit
-import time
+
 
 pygame.init()
 
@@ -16,20 +16,9 @@ WHITE = (255, 255, 255)
 CENTER = (WIDTH/2, HEIGHT/2)
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
 
-mouse_current_img = mouseArrow = pygame.image.load('resources/mouse/arrow.png').convert_alpha()
-mouseHand = pygame.image.load('resources/mouse/hand.png').convert_alpha()
+standimg = pygame.image.load('resources/student/student_stand.png').convert_alpha()
 
-class Mouse(pygame.sprite.Sprite):
-    def __init__(self):
-        super().__init__()
-        self.images = [pygame.image.load('resources/mouse/arrow.png').convert_alpha(), pygame.image.load('resources/mouse/hand.png').convert_alpha()]
-        self.rect = self.images[0].get_rect()
 
-    def update(self):
-        self.rect.topleft = pygame.mouse.get_pos()
-        screen.blit(self.image, self.rect)
-
-mouse = Mouse()
 
 class App:
     def __init__(self):
@@ -43,7 +32,22 @@ class App:
                 exit()
 
 
+class Mouse(pygame.sprite.Sprite):
+    def __init__(self):
+        super().__init__()
+        self.images = [pygame.image.load('resources/mouse/arrow.png').convert_alpha(), pygame.image.load('resources/mouse/hand.png').convert_alpha()]
+        self.image = self.images[0]
+        self.rect = self.image.get_rect()
 
+    def update(self):
+        self.rect.topleft = pygame.mouse.get_pos()
+        if self.rect.colliderect(b) and app.gameState == 'main menu' or self.rect.colliderect(lv1_b) and app.gameState == 'level menu':
+            self.image = self.images[1]
+        else:
+            self.image = self.images[0]
+        screen.blit(self.image, self.rect)
+
+mouse = Mouse()
 
 
 
@@ -82,6 +86,28 @@ class Button:
 
 
 
+class Level:
+    def __init__(self, students):
+        self.students = students
+        self.spriteGroup = pygame.sprite.Group()
+        for student in self.students:
+            self.spriteGroup.add(student)
+
+
+class Student(pygame.sprite.Sprite):
+    def __init__(self, pos):
+        super().__init__()
+        self.image = standimg
+        self.rect = self.image.get_rect(center=pos)
+
+
+
+
+
+
+
+
+
 b = Button(CENTER, 200, 100)
 lv1_b = Button((150, 100), 200, 100)
 
@@ -108,6 +134,6 @@ while 1:
         if app.gameState == 'lv1':
             ...
 
-    screen.blit(mouse_current_img, pygame.mouse.get_pos())
+    mouse.update()
     pygame.display.update()
 
