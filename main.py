@@ -89,19 +89,30 @@ class Button:
 
 
 class Level:
-    def __init__(self, students):
-        self.students = students
-        self.spriteGroup = pygame.sprite.Group()
+    def __init__(self, student_positions, student_time_range, lv_time):
+        self.students = set()
+        for pos in range(student_positions):
+            self.students.add(Student(pos, student_time_range))
+
+        self.timer = lv_time
+        self.start_time = time.time()
+
+
+
+    def students_logic(self):
         for student in self.students:
-            self.spriteGroup.add(student)
+            student.update()
 
-    def draw_students(self):
-        self.spriteGroup.draw(screen)
+    def show_time(self):
+        ...
+
+class Watch:
+    def __init__(self):
+        ...
 
 
-class Student(pygame.sprite.Sprite):
+class Student:
     def __init__(self, pos, timer):
-        super().__init__()
         self.image = standimg
 
         self.rect = self.image.get_rect(center=pos)
@@ -125,17 +136,19 @@ class Student(pygame.sprite.Sprite):
         if time.time() - self.curedTime > self.symptomDelay:
             self.symptoms_showing()
 
-    def draw(self):
-        screen.blit(self.image, self.rect)
+    def update(self):
         self.timer()
+        screen.blit(self.image, self.rect)
 
 
-
+class Tool:
+    def __init__(self):
+        ...
 
 
 #lv1 = Level([Student(pos, (3, 8)) for pos in [(400, 600), (500, 600), (600, 600), (700, 600)]])
+s = Student((WIDTH/2, HEIGHT/2), (3, 8))
 
-student = Student((WIDTH/2, HEIGHT/2), (3, 7))
 
 b = Button(CENTER, 200, 100)
 lv1_b = Button((150, 100), 200, 100)
@@ -162,7 +175,7 @@ while 1:
         screen.blit(classroomBg, (0, 0))
         if app.gameState == 'lv1':
             #lv1.draw_students()
-            student.draw()
+            s.update()
 
 
     mouse.update()
