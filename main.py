@@ -1,4 +1,6 @@
 import pygame
+import time
+import random
 from sys import exit
 
 
@@ -17,7 +19,7 @@ CENTER = (WIDTH/2, HEIGHT/2)
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
 
 standimg = pygame.image.load('resources/student/student_stand.png').convert_alpha()
-
+sickimg = pygame.image.load('resources/student/sick_student.png').convert_alpha()
 
 
 class App:
@@ -93,20 +95,47 @@ class Level:
         for student in self.students:
             self.spriteGroup.add(student)
 
+    def draw_students(self):
+        self.spriteGroup.draw(screen)
+
 
 class Student(pygame.sprite.Sprite):
-    def __init__(self, pos):
+    def __init__(self, pos, timer):
         super().__init__()
         self.image = standimg
+
         self.rect = self.image.get_rect(center=pos)
+        self.timerRange = timer
+        self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
+        self.curedTime = time.time()
+
+    def symptoms_showing(self):
+        self.image = sickimg
+        self.rect = self.image.get_rect(center=self.rect.center)
+        if pygame.mouse.get_pressed()[0] and self.rect.collidepoint(pygame.mouse.get_pos()):
+            self.cured()
+
+    def cured(self):
+        self.curedTime = time.time()
+        self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
+        self.image = standimg
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+    def timer(self):
+        if time.time() - self.curedTime > self.symptomDelay:
+            self.symptoms_showing()
+
+    def draw(self):
+        screen.blit(self.image, self.rect)
+        self.timer()
 
 
 
 
 
+#lv1 = Level([Student(pos, (3, 8)) for pos in [(400, 600), (500, 600), (600, 600), (700, 600)]])
 
-
-
+student = Student((WIDTH/2, HEIGHT/2), (3, 7))
 
 b = Button(CENTER, 200, 100)
 lv1_b = Button((150, 100), 200, 100)
@@ -132,7 +161,9 @@ while 1:
     if app.gameState.startswith('lv'):
         screen.blit(classroomBg, (0, 0))
         if app.gameState == 'lv1':
-            ...
+            #lv1.draw_students()
+            student.draw()
+
 
     mouse.update()
     pygame.display.update()
