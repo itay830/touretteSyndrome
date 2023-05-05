@@ -21,6 +21,15 @@ classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
 standimg = pygame.image.load('resources/student/student_stand.png').convert_alpha()
 sickimg = pygame.image.load('resources/student/sick_student.png').convert_alpha()
 
+clockimg = pygame.image.load('resources/clock/clock.png').convert_alpha()
+clock_time_font = pygame.font.SysFont('gadugi', 35, True, False)
+
+toolBarSurf = pygame.Surface((150, 900))
+toolBarSurf.fill((67, 67, 67))
+toolBarRect = toolBarSurf.get_rect(topleft=(0, 0))
+
+syringeimg = pygame.image.load('resources/tools/syringe.png').convert_alpha()
+
 
 class App:
     def __init__(self):
@@ -91,24 +100,46 @@ class Button:
 class Level:
     def __init__(self, student_positions, student_time_range, lv_time):
         self.students = set()
-        for pos in range(student_positions):
+        for pos in student_positions:
             self.students.add(Student(pos, student_time_range))
 
         self.timer = lv_time
         self.start_time = time.time()
 
+        self.watch = Watch((1150, 100), 5, 10)
 
 
-    def students_logic(self):
+
+    def logic(self):
         for student in self.students:
             student.update()
+        self.watch.change_time()
+        self.watch.show_time()
 
-    def show_time(self):
-        ...
 
 class Watch:
-    def __init__(self):
-        ...
+    def __init__(self, pos, stime, etime):
+        self.surf = clockimg
+        self.stime = stime
+        self.etime = etime
+        self.rect = self.surf.get_rect(center=pos)
+        self.txt = clock_time_font.render(f'{self.stime}am', True, (255, 0, 0))
+        self.txtrect = self.txt.get_rect(center=self.rect.center)
+
+        self.dt = 0
+        self.startTime = time.time()
+
+
+    def show_time(self):
+        screen.blit(self.surf, self.rect)
+        screen.blit(self.txt, self.txtrect)
+
+    def change_time(self):
+        if int((time.time() - self.startTime)) >= 60:
+            self.dt += 1
+            self.startTime = time.time()
+        self.txt = clock_time_font.render(f'{self.stime + self.dt}am', True, (255, 0, 0))
+        self.txtrect = self.txt.get_rect(center=self.rect.center)
 
 
 class Student:
@@ -142,11 +173,22 @@ class Student:
 
 
 class Tool:
-    def __init__(self):
-        ...
+    def __init__(self, img, y):
+        self.surf = img
+        self.rect = self.surf.get_rect(topleft=(10, y))
+
+    def draw(self):
+        screen.blit(self.surf, self.rect)
+
+    def drag(self):
+        if pygame.mouse.get_pressed()[1] and self.rect.collidepoint(pygame.mouse.get_pos()):
+            ...
 
 
-#lv1 = Level([Student(pos, (3, 8)) for pos in [(400, 600), (500, 600), (600, 600), (700, 600)]])
+syringe = Tool(syringeimg, 50)
+
+
+lv1 = Level([(400, 600), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 s = Student((WIDTH/2, HEIGHT/2), (3, 8))
 
 
@@ -173,9 +215,11 @@ while 1:
 
     if app.gameState.startswith('lv'):
         screen.blit(classroomBg, (0, 0))
+        screen.blit(toolBarSurf, toolBarRect)
+
         if app.gameState == 'lv1':
-            #lv1.draw_students()
-            s.update()
+            lv1.logic()
+            syringe.draw()
 
 
     mouse.update()
