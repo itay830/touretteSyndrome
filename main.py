@@ -1,6 +1,7 @@
 import pygame
 import time
 import random
+from math import sin, cos, atan2
 from sys import exit
 
 
@@ -150,18 +151,20 @@ class Student:
         self.timerRange = timer
         self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
         self.curedTime = time.time()
+        self.sick = False
 
     def symptoms_showing(self):
         self.image = sickimg
         self.rect = self.image.get_rect(center=self.rect.center)
-        if pygame.mouse.get_pressed()[0] and self.rect.collidepoint(pygame.mouse.get_pos()):
-            self.cured()
+        self.sick = True
+
 
     def cured(self):
         self.curedTime = time.time()
         self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
         self.image = standimg
         self.rect = self.image.get_rect(center=self.rect.center)
+        self.sick = False
 
     def timer(self):
         if time.time() - self.curedTime > self.symptomDelay:
@@ -176,13 +179,58 @@ class Tool:
     def __init__(self, img, y):
         self.surf = img
         self.rect = self.surf.get_rect(topleft=(10, y))
+        self.pos = (10, y)
+
+        self.station = pygame.Surface((5, 5)).get_rect(topleft=self.pos)
+
+        self.moveBack = False
+        self.someoneCured = False
+
+        self.hold = False
+        self.dragPos = (10, y)
+        self.mousex_in_rect = 0
+        self.mousey_in_rect = 0
 
     def draw(self):
         screen.blit(self.surf, self.rect)
 
-    def drag(self):
-        if pygame.mouse.get_pressed()[1] and self.rect.collidepoint(pygame.mouse.get_pos()):
-            ...
+    def drag(self, students):
+        mouse_pos = pygame.mouse.get_pos()
+
+        if self.rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
+            self.hold = True
+
+        if not pygame.mouse.get_pressed()[0]:
+            self.hold = False
+            self.moveBack = True
+
+        if self.rect.collidepoint(mouse_pos) and not pygame.mouse.get_pressed()[0]:
+            self.mousex_in_rect = self.rect.right - self.rect.left - (self.rect.right - mouse_pos[0])
+            self.mousey_in_rect = self.rect.bottom - self.rect.top - (self.rect.bottom - mouse_pos[1])
+            self.dragPos = pygame.mouse.get_pos()
+
+        if self.hold and not self.moveBack:
+            self.rect.x = self.dragPos[0] + (mouse_pos[0] - self.dragPos[0]) - self.mousex_in_rect
+            self.rect.y = self.dragPos[1] + (mouse_pos[1] - self.dragPos[1]) - self.mousey_in_rect
+        else:
+            for student in students:
+                if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured:
+                    student.cured()
+                    self.moveBack = True
+                    self.someoneCured = True
+                    break
+
+            if self.rect.colliderect(self.station):
+                self.moveBack = False
+                self.someoneCured = False
+            if self.moveBack:
+                angle = atan2(self.pos[1] - self.rect.topleft[1], self.pos[0] - self.rect.topleft[0])
+                dx = cos(angle)
+                dy = sin(angle)
+                self.rect.x += round(dx, 2) * 30
+                self.rect.y += round(dy, 2) * 30
+
+
 
 
 syringe = Tool(syringeimg, 50)
@@ -220,8 +268,11 @@ while 1:
         if app.gameState == 'lv1':
             lv1.logic()
             syringe.draw()
+            syringe.drag(lv1.students)
 
 
     mouse.update()
     pygame.display.update()
+
+
 
