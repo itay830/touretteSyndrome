@@ -328,7 +328,6 @@ while 1:
                 pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius+selectedRadius)
             button.update()
 
-
         if not arrowPass:
             if jumps_counter == steps - 1:
                 jumps_counter = 0
