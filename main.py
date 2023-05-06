@@ -25,12 +25,15 @@ sickimg = pygame.image.load('resources/student/sick_student.png').convert_alpha(
 clockimg = pygame.image.load('resources/clock/clock.png').convert_alpha()
 clock_time_font = pygame.font.SysFont('gadugi', 35, True, False)
 
-toolBarSurf = pygame.Surface((150, 900))
+toolBarSurf = pygame.Surface((200, 900))
 toolBarSurf.fill((67, 67, 67))
 toolBarRect = toolBarSurf.get_rect(topleft=(0, 0))
 
 syringeimg = pygame.image.load('resources/tools/syringe.png').convert_alpha()
 
+startimg = pygame.image.load('resources/buttons/start.png').convert_alpha()
+optionsimg = pygame.image.load('resources/buttons/options.png').convert_alpha()
+exitimg = pygame.image.load('resources/buttons/exit.png').convert_alpha()
 
 class App:
     def __init__(self):
@@ -53,7 +56,7 @@ class Mouse(pygame.sprite.Sprite):
 
     def update(self):
         self.rect.topleft = pygame.mouse.get_pos()
-        if self.rect.colliderect(b) and app.gameState == 'main menu' or self.rect.colliderect(lv1_b) and app.gameState == 'level menu':
+        if self.rect.colliderect(startButton.rect) and app.gameState == 'main menu' or self.rect.colliderect(lv1_b) and app.gameState == 'level menu':
             self.image = self.images[1]
         else:
             self.image = self.images[0]
@@ -65,8 +68,8 @@ mouse = Mouse()
 
 class Button:
 
-    def __init__(self, pos, width, height):
-        self.surf = pygame.Surface((width, height))
+    def __init__(self, pos, img):
+        self.surf = img
         self.surf.set_colorkey(BLACK)
         self.rect = self.surf.get_rect(center=pos)
 
@@ -79,17 +82,14 @@ class Button:
     def logic(self):
         if self.rect.colliderect(mouse.rect):
             self.clickStage = False
-            self.surf.fill((255, 0, 0))
             if pygame.mouse.get_pressed()[0]:
                 self.held = True
-                self.surf.fill((0, 255, 0))
             if self.held and not pygame.mouse.get_pressed()[0]:
                 self.clickStage = True
 
         else:
             self.clickStage = False
             self.held = False
-            self.surf.fill((255, 0, 255))
 
     def update(self):
         self.logic()
@@ -97,7 +97,7 @@ class Button:
 
 
 
-
+levels = []
 class Level:
     def __init__(self, student_positions, student_time_range, lv_time):
         self.students = set()
@@ -108,6 +108,8 @@ class Level:
         self.start_time = time.time()
 
         self.watch = Watch((1150, 100), 5, 10)
+
+        levels.append(self)
 
 
 
@@ -158,7 +160,6 @@ class Student:
         self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = True
 
-
     def cured(self):
         self.curedTime = time.time()
         self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
@@ -178,10 +179,10 @@ class Student:
 class Tool:
     def __init__(self, img, y):
         self.surf = img
-        self.rect = self.surf.get_rect(topleft=(10, y))
+        self.rect = self.surf.get_rect(center=(100, y))
         self.pos = (10, y)
 
-        self.station = pygame.Surface((5, 5)).get_rect(topleft=self.pos)
+        self.station = pygame.Surface((1, 1)).get_rect(center=(50, y))
 
         self.moveBack = False
         self.someoneCured = False
@@ -237,11 +238,19 @@ syringe = Tool(syringeimg, 50)
 
 
 lv1 = Level([(400, 600), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
-s = Student((WIDTH/2, HEIGHT/2), (3, 8))
+lv2 = Level([(400, 800), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+lv3 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+
+level_buttons = []
+for x in range(len(levels)):
+    level_buttons.append(Button((CENTER[0]+100*x, CENTER[1]), ...))
 
 
-b = Button(CENTER, 200, 100)
-lv1_b = Button((150, 100), 200, 100)
+startButton = Button((CENTER[0], CENTER[1] - 200), startimg)
+optionsButton = Button((CENTER[0], CENTER[1]), optionsimg)
+exitButton = Button((CENTER[0], CENTER[1] + 200), exitimg)
+
+lv1_b = Button((150, 100), startimg)
 
 app = App()
 while 1:
@@ -251,9 +260,16 @@ while 1:
 
     if app.gameState == 'main menu':
         screen.fill(BLACK)
-        b.update()
-        if b.clickStage:
+        startButton.update()
+        optionsButton.update()
+        exitButton.update()
+        if startButton.clickStage:
             app.gameState = 'level menu'
+        if optionsButton.clickStage:
+            app.gameState = 'options'
+        if exitButton.clickStage:
+            pygame.quit()
+            exit()
 
     if app.gameState == 'level menu':
         screen.fill(BLACK)
@@ -269,7 +285,6 @@ while 1:
             lv1.logic()
             syringe.draw()
             syringe.drag(lv1.students)
-
 
     mouse.update()
     pygame.display.update()
