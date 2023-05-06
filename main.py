@@ -35,6 +35,9 @@ startimg = pygame.image.load('resources/buttons/start.png').convert_alpha()
 optionsimg = pygame.image.load('resources/buttons/options.png').convert_alpha()
 exitimg = pygame.image.load('resources/buttons/exit.png').convert_alpha()
 
+rightArrowimg = pygame.image.load('resources/buttons/rightArrow.png').convert_alpha()
+leftArrowimg = pygame.image.load('resources/buttons/leftArrow.png').convert_alpha()
+
 class App:
     def __init__(self):
         self.gameState = 'main menu'
@@ -56,7 +59,7 @@ class Mouse(pygame.sprite.Sprite):
 
     def update(self):
         self.rect.topleft = pygame.mouse.get_pos()
-        if self.rect.colliderect(startButton.rect) and app.gameState == 'main menu' or self.rect.colliderect(lv1_b) and app.gameState == 'level menu':
+        if False:
             self.image = self.images[1]
         else:
             self.image = self.images[0]
@@ -68,8 +71,13 @@ mouse = Mouse()
 
 class Button:
 
-    def __init__(self, pos, img):
-        self.surf = img
+    def __init__(self, pos, img=None, radius=200):
+        if img is not None:
+            self.surf = img
+        else:
+            self.surf = pygame.Surface((radius*2.5, radius*2.5))
+            pygame.draw.circle(self.surf, (67, 67, 67), (self.surf.get_width()/2, self.surf.get_height()/2), radius)
+
         self.surf.set_colorkey(BLACK)
         self.rect = self.surf.get_rect(center=pos)
 
@@ -86,6 +94,7 @@ class Button:
                 self.held = True
             if self.held and not pygame.mouse.get_pressed()[0]:
                 self.clickStage = True
+                self.held = False
 
         else:
             self.clickStage = False
@@ -240,23 +249,39 @@ syringe = Tool(syringeimg, 50)
 lv1 = Level([(400, 600), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv2 = Level([(400, 800), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv3 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+lv4 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+lv5 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 
+radius = 200
 level_buttons = []
 for x in range(len(levels)):
-    level_buttons.append(Button((CENTER[0]+100*x, CENTER[1]), ...))
+    level_buttons.append(Button((CENTER[0]+450*x, CENTER[1]), radius=radius))
 
 
 startButton = Button((CENTER[0], CENTER[1] - 200), startimg)
 optionsButton = Button((CENTER[0], CENTER[1]), optionsimg)
 exitButton = Button((CENTER[0], CENTER[1] + 200), exitimg)
 
-lv1_b = Button((150, 100), startimg)
+selectedLevel = 0
+selectedRadius = 0
+button_dx = 0
+steps = 10
+jumps_counter = 0
+rightArrowButton = Button((WIDTH - 75, CENTER[1]), rightArrowimg)
+leftArrowButton = Button((75, CENTER[1]), leftArrowimg)
+arrowPass = True
+
+
+def button_calc_dist():
+    global selectedRadius
+    selectedRadius = 0
+    return False, 0, (CENTER[0] - level_buttons[selectedLevel].rect.centerx) / steps
+
 
 app = App()
 while 1:
     clock.tick(FPS)
     app.regular_events()
-
 
     if app.gameState == 'main menu':
         screen.fill(BLACK)
@@ -273,9 +298,50 @@ while 1:
 
     if app.gameState == 'level menu':
         screen.fill(BLACK)
-        lv1_b.update()
-        if lv1_b.clickStage:
-            app.gameState = 'lv1'
+
+
+
+        if arrowPass:
+            if rightArrowButton.clickStage and selectedLevel < len(levels) - 1:
+                selectedLevel += 1
+                arrowPass, jumps_counter, button_dx = button_calc_dist()
+
+            elif rightArrowButton.clickStage:
+                selectedLevel = 0
+                arrowPass, jumps_counter, button_dx = button_calc_dist()
+
+            if leftArrowButton.clickStage and selectedLevel > 0:
+                selectedLevel -= 1
+                arrowPass, jumps_counter, button_dx = button_calc_dist()
+
+            elif leftArrowButton.clickStage:
+                selectedLevel = len(levels) - 1
+                arrowPass, jumps_counter, button_dx = button_calc_dist()
+
+        for index, button in enumerate(level_buttons):
+            button.rect.centerx += button_dx
+            button.surf.fill(BLACK)
+
+            if not level_buttons[selectedLevel] is button:
+                pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius)
+            else:
+                pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius+selectedRadius)
+            button.update()
+
+
+        if not arrowPass:
+            if jumps_counter == steps - 1:
+                jumps_counter = 0
+                button_dx = 0
+                arrowPass = True
+                selectedRadius += 25
+            else:
+                jumps_counter += 1
+                level_buttons[selectedLevel].surf.fill(BLACK)
+
+        rightArrowButton.update()
+        leftArrowButton.update()
+        pygame.draw.line(screen, (255, 0, 0), (WIDTH/2, 0), (WIDTH/2, HEIGHT))
 
     if app.gameState.startswith('lv'):
         screen.blit(classroomBg, (0, 0))
