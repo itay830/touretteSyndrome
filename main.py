@@ -208,6 +208,7 @@ class Tool:
         self.mousex_in_rect = 0
         self.mousey_in_rect = 0
 
+
     def draw(self):
         screen.blit(self.surf, self.rect)
 
@@ -234,6 +235,7 @@ class Tool:
         if self.hold and not self.moveBack:
             self.rect.x = self.dragPos[0] + (mouse_pos[0] - self.dragPos[0]) - self.mousex_in_rect
             self.rect.y = self.dragPos[1] + (mouse_pos[1] - self.dragPos[1]) - self.mousey_in_rect
+            self.someoneCured = False
         else:
             for student in students:
                 if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured:
@@ -241,15 +243,14 @@ class Tool:
                     self.moveBack = True
 
                     # Alternate method :
-                    self.dx = (self.station_pos[0] - self.rect.centerx) / self.steps
-                    self.dy = (self.station_pos[1] - self.rect.centery) / self.steps
+                    #self.dx = (self.station_pos[0] - self.rect.centerx) / self.steps
+                    #self.dy = (self.station_pos[1] - self.rect.centery) / self.steps
 
                     self.someoneCured = True
                     break
 
 
             if self.moveBack:
-
                 # Alternate method :
                 self.rect.x += self.dx
                 self.rect.y += self.dy
@@ -258,6 +259,7 @@ class Tool:
                 else:
                     self.jump_counter = 0
                     self.moveBack = False
+
 
 
 syringe = Tool(syringeimg, 100)
