@@ -1,7 +1,7 @@
 import pygame
 import time
 import random
-from math import sin, cos, atan2
+#from math import sin, cos, atan2
 from sys import exit
 
 
@@ -68,9 +68,7 @@ class Mouse(pygame.sprite.Sprite):
 mouse = Mouse()
 
 
-
 class Button:
-
     def __init__(self, pos, img=None, radius=200):
         if img is not None:
             self.surf = img
@@ -109,6 +107,7 @@ class Button:
 levels = []
 class Level:
     def __init__(self, student_positions, student_time_range, lv_time):
+        self.name = f"lv{len(levels)+1}"
         self.students = set()
         for pos in student_positions:
             self.students.add(Student(pos, student_time_range))
@@ -193,6 +192,14 @@ class Tool:
 
         self.station = pygame.Surface((1, 1)).get_rect(center=(50, y))
 
+        # Alternate method :
+        self.station_pos = (100, y)
+        self.dx = 0
+        self.dy = 0
+        self.jump_counter = 0
+        self.steps = 10
+
+
         self.moveBack = False
         self.someoneCured = False
 
@@ -214,6 +221,11 @@ class Tool:
             self.hold = False
             self.moveBack = True
 
+            # Alternate method :
+            self.dx = (self.station_pos[0] - self.rect.centerx) / self.steps
+            self.dy = (self.station_pos[1] - self.rect.centery) / self.steps
+
+
         if self.rect.collidepoint(mouse_pos) and not pygame.mouse.get_pressed()[0]:
             self.mousex_in_rect = self.rect.right - self.rect.left - (self.rect.right - mouse_pos[0])
             self.mousey_in_rect = self.rect.bottom - self.rect.top - (self.rect.bottom - mouse_pos[1])
@@ -227,23 +239,28 @@ class Tool:
                 if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured:
                     student.cured()
                     self.moveBack = True
+
+                    # Alternate method :
+                    self.dx = (self.station_pos[0] - self.rect.centerx) / self.steps
+                    self.dy = (self.station_pos[1] - self.rect.centery) / self.steps
+
                     self.someoneCured = True
                     break
 
-            if self.rect.colliderect(self.station):
-                self.moveBack = False
-                self.someoneCured = False
+
             if self.moveBack:
-                angle = atan2(self.pos[1] - self.rect.topleft[1], self.pos[0] - self.rect.topleft[0])
-                dx = cos(angle)
-                dy = sin(angle)
-                self.rect.x += round(dx, 2) * 30
-                self.rect.y += round(dy, 2) * 30
+
+                # Alternate method :
+                self.rect.x += self.dx
+                self.rect.y += self.dy
+                if self.jump_counter < steps - 1:
+                    self.jump_counter += 1
+                else:
+                    self.jump_counter = 0
+                    self.moveBack = False
 
 
-
-
-syringe = Tool(syringeimg, 50)
+syringe = Tool(syringeimg, 100)
 
 
 lv1 = Level([(400, 600), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
@@ -251,6 +268,7 @@ lv2 = Level([(400, 800), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv3 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv4 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv5 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+lv6 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 
 radius = 200
 level_buttons = []
@@ -328,6 +346,8 @@ while 1:
                 pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius+selectedRadius)
             button.update()
 
+
+
         if not arrowPass:
             if jumps_counter == steps - 1:
                 jumps_counter = 0
@@ -338,6 +358,9 @@ while 1:
                 jumps_counter += 1
                 level_buttons[selectedLevel].surf.fill(BLACK)
 
+        if level_buttons[selectedLevel].clickStage:
+            app.gameState = f'lv{selectedLevel+1}'
+
         rightArrowButton.update()
         leftArrowButton.update()
         pygame.draw.line(screen, (255, 0, 0), (WIDTH/2, 0), (WIDTH/2, HEIGHT))
@@ -346,13 +369,16 @@ while 1:
         screen.blit(classroomBg, (0, 0))
         screen.blit(toolBarSurf, toolBarRect)
 
-        if app.gameState == 'lv1':
-            lv1.logic()
-            syringe.draw()
-            syringe.drag(lv1.students)
+
+
+
+        for level in levels:
+            if app.gameState == level.name:
+                level.logic()
+                syringe.draw()
+                syringe.drag(level.students)
 
     mouse.update()
     pygame.display.update()
-
 
 
