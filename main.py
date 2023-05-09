@@ -20,7 +20,11 @@ CENTER = (WIDTH/2, HEIGHT/2)
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
 
 stand_animation = [pygame.image.load(f'resources/student/student_stand_animation/sprite_{num}.png') for num in range(0, 4)]
-sickimg = pygame.image.load('resources/student/sick_student.png').convert_alpha()
+voice_tick_animation = [pygame.image.load(f'resources/student/voice_tick_animation/sprite_{num}.png') for num in range(0, 4)]
+motor_tick_animation = [pygame.image.load(f'resources/student/motor_tick_animation/sprite_{num}.png') for num in range(0, 4)]
+symptoms_ani = [voice_tick_animation, motor_tick_animation]
+
+#sickimg = pygame.image.load('resources/student/sick_student.png').convert_alpha()
 
 clockimg = pygame.image.load('resources/clock/clock.png').convert_alpha()
 clock_time_font = pygame.font.SysFont('gadugi', 35, True, False)
@@ -169,20 +173,25 @@ class Student:
         self.sick = False
 
     def symptoms_showing(self):
-        self.image = sickimg
+        self.change_animation(random.choice(symptoms_ani))
         self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = True
 
     def cured(self):
         self.curedTime = time.time()
         self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
-        #self.image = standimg
+        self.change_animation(stand_animation)
         self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = False
 
     def timer(self):
-        if time.time() - self.curedTime > self.symptomDelay:
+        if time.time() - self.curedTime > self.symptomDelay and not self.sick:
             self.symptoms_showing()
+
+    def change_animation(self, ani):
+        self.current_ani = ani
+        self.image = self.current_ani[0]
+        self.ani_tick = 0
 
     def animation(self):
         self.dtick = round(random.uniform(0.01, 0.2), 2)
@@ -194,7 +203,7 @@ class Student:
             self.ani_tick = 0
 
     def update(self):
-        #self.timer()
+        self.timer()
         self.animation()
         screen.blit(self.image, self.rect)
 
