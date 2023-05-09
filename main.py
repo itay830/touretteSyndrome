@@ -113,12 +113,14 @@ class Button:
 
 levels = []
 class Level:
-    def __init__(self, student_positions, student_time_range, lv_time):
+    def __init__(self, student_positions, student_time_range, lv_time, hearts_num=5):
         self.name = f"lv{len(levels)+1}"
         self.students = set()
+        self.hearts = []
         for pos in student_positions:
             self.students.add(Student(pos, student_time_range))
-
+        for dx in range(hearts_num):
+            self.hearts.append(Heart((300 + 105*dx, 50)))
         self.timer = lv_time
         self.start_time = time.time()
 
@@ -131,6 +133,9 @@ class Level:
     def logic(self):
         for student in self.students:
             student.update()
+        for heart in self.hearts:
+            heart.draw()
+
         self.watch.change_time()
         self.watch.show_time()
 
@@ -216,8 +221,13 @@ class Student:
 
 
 class Heart:
-    def __init__(self):
-        ...
+    def __init__(self, pos):
+        self.img = heartFullimg
+        self.rect = self.img.get_rect(center=pos)
+
+    def draw(self):
+        screen.blit(self.img, self.rect)
+
 
 
 tools = set()
