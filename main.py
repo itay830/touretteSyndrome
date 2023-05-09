@@ -19,7 +19,7 @@ WHITE = (255, 255, 255)
 CENTER = (WIDTH/2, HEIGHT/2)
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
 
-standimg = pygame.image.load('resources/student/student_stand.png').convert_alpha()
+stand_animation = [pygame.image.load(f'resources/student/student_stand_animation/sprite_{num}.png') for num in range(0, 4)]
 sickimg = pygame.image.load('resources/student/sick_student.png').convert_alpha()
 
 clockimg = pygame.image.load('resources/clock/clock.png').convert_alpha()
@@ -30,6 +30,8 @@ toolBarSurf.fill((67, 67, 67))
 toolBarRect = toolBarSurf.get_rect(topleft=(0, 0))
 
 syringeimg = pygame.image.load('resources/tools/syringe.png').convert_alpha()
+haldolimg = pygame.image.load('resources/tools/haldol.png').convert_alpha()
+
 
 startimg = pygame.image.load('resources/buttons/start.png').convert_alpha()
 optionsimg = pygame.image.load('resources/buttons/options.png').convert_alpha()
@@ -155,7 +157,10 @@ class Watch:
 
 class Student:
     def __init__(self, pos, timer):
-        self.image = standimg
+        self.current_ani = stand_animation
+        self.dtick = 0.1
+        self.image = self.current_ani[0]
+        self.ani_tick = 0
 
         self.rect = self.image.get_rect(center=pos)
         self.timerRange = timer
@@ -171,7 +176,7 @@ class Student:
     def cured(self):
         self.curedTime = time.time()
         self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
-        self.image = standimg
+        #self.image = standimg
         self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = False
 
@@ -179,11 +184,22 @@ class Student:
         if time.time() - self.curedTime > self.symptomDelay:
             self.symptoms_showing()
 
+    def animation(self):
+        self.dtick = round(random.uniform(0.01, 0.2), 2)
+        self.image = self.current_ani[int(self.ani_tick) % len(self.current_ani)]
+        self.rect = self.image.get_rect(center=self.rect.center)
+
+        self.ani_tick += self.dtick
+        if self.ani_tick > len(self.current_ani):
+            self.ani_tick = 0
+
     def update(self):
-        self.timer()
+        #self.timer()
+        self.animation()
         screen.blit(self.image, self.rect)
 
 
+tools = set()
 class Tool:
     def __init__(self, img, y):
         self.surf = img
@@ -197,7 +213,7 @@ class Tool:
         self.dx = 0
         self.dy = 0
         self.jump_counter = 0
-        self.steps = 10
+        self.steps = 20
 
 
         self.moveBack = False
@@ -208,6 +224,7 @@ class Tool:
         self.mousex_in_rect = 0
         self.mousey_in_rect = 0
 
+        tools.add(self)
 
     def draw(self):
         screen.blit(self.surf, self.rect)
@@ -218,13 +235,14 @@ class Tool:
         if self.rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
             self.hold = True
 
-        if not pygame.mouse.get_pressed()[0]:
+        if not pygame.mouse.get_pressed()[0] or self.rect.collidepoint(mouse_pos) == False:
             self.hold = False
             self.moveBack = True
 
             # Alternate method :
             self.dx = (self.station_pos[0] - self.rect.centerx) / self.steps
             self.dy = (self.station_pos[1] - self.rect.centery) / self.steps
+
 
 
         if self.rect.collidepoint(mouse_pos) and not pygame.mouse.get_pressed()[0]:
@@ -241,11 +259,6 @@ class Tool:
                 if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured:
                     student.cured()
                     self.moveBack = True
-
-                    # Alternate method :
-                    #self.dx = (self.station_pos[0] - self.rect.centerx) / self.steps
-                    #self.dy = (self.station_pos[1] - self.rect.centery) / self.steps
-
                     self.someoneCured = True
                     break
 
@@ -263,6 +276,7 @@ class Tool:
 
 
 syringe = Tool(syringeimg, 100)
+haldol = Tool(haldolimg, 250)
 
 
 lv1 = Level([(400, 600), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
@@ -365,7 +379,6 @@ while 1:
 
         rightArrowButton.update()
         leftArrowButton.update()
-        pygame.draw.line(screen, (255, 0, 0), (WIDTH/2, 0), (WIDTH/2, HEIGHT))
 
     if app.gameState.startswith('lv'):
         screen.blit(classroomBg, (0, 0))
@@ -376,9 +389,11 @@ while 1:
 
         for level in levels:
             if app.gameState == level.name:
+
                 level.logic()
-                syringe.draw()
-                syringe.drag(level.students)
+                for tool in tools:
+                    tool.drag(level.students)
+                    tool.draw()
 
     mouse.update()
     pygame.display.update()
