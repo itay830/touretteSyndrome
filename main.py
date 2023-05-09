@@ -294,7 +294,7 @@ class Tool:
             def someone_cured(s):
                 s.cured()
                 self.moveBack = True
-                self.someoneCured = True
+
 
 
             for student in students:
@@ -306,8 +306,8 @@ class Tool:
                         someone_cured(student)
                         break
                     else:
-                        self.someoneCured = True
                         level.mistakes -= 1
+                    self.someoneCured = True
 
 
             if self.moveBack:
