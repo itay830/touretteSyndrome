@@ -24,8 +24,6 @@ voice_tick_animation = [pygame.image.load(f'resources/student/voice_tick_animati
 motor_tick_animation = [pygame.image.load(f'resources/student/motor_tick_animation/sprite_{num}.png') for num in range(0, 4)]
 symptoms_ani = [voice_tick_animation, motor_tick_animation]
 
-#sickimg = pygame.image.load('resources/student/sick_student.png').convert_alpha()
-
 clockimg = pygame.image.load('resources/clock/clock.png').convert_alpha()
 clock_time_font = pygame.font.SysFont('gadugi', 35, True, False)
 
@@ -43,6 +41,9 @@ exitimg = pygame.image.load('resources/buttons/exit.png').convert_alpha()
 
 rightArrowimg = pygame.image.load('resources/buttons/rightArrow.png').convert_alpha()
 leftArrowimg = pygame.image.load('resources/buttons/leftArrow.png').convert_alpha()
+
+heartFullimg = pygame.image.load('resources/heart/full_heart.png').convert_alpha()
+heartEmptyimg = pygame.image.load('resources/heart/empty_heart.png').convert_alpha()
 
 class App:
     def __init__(self):
@@ -163,6 +164,8 @@ class Student:
     def __init__(self, pos, timer):
         self.current_ani = stand_animation
         self.dtick = 0.1
+        self.lowerTickRate = 0.01
+        self.upperTickRate = 0.2
         self.image = self.current_ani[0]
         self.ani_tick = 0
 
@@ -173,6 +176,8 @@ class Student:
         self.sick = False
 
     def symptoms_showing(self):
+        self.lowerTickRate = 0.1
+        self.upperTickRate = 0.3
         self.change_animation(random.choice(symptoms_ani))
         self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = True
@@ -180,6 +185,8 @@ class Student:
     def cured(self):
         self.curedTime = time.time()
         self.symptomDelay = random.randint(self.timerRange[0], self.timerRange[1])
+        self.lowerTickRate = 0.01
+        self.upperTickRate = 0.2
         self.change_animation(stand_animation)
         self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = False
@@ -194,7 +201,7 @@ class Student:
         self.ani_tick = 0
 
     def animation(self):
-        self.dtick = round(random.uniform(0.01, 0.2), 2)
+        self.dtick = round(random.uniform(self.lowerTickRate, self.upperTickRate), 2)
         self.image = self.current_ani[int(self.ani_tick) % len(self.current_ani)]
         self.rect = self.image.get_rect(center=self.rect.center)
 
@@ -208,9 +215,15 @@ class Student:
         screen.blit(self.image, self.rect)
 
 
+class Heart:
+    def __init__(self):
+        ...
+
+
 tools = set()
 class Tool:
-    def __init__(self, img, y):
+    def __init__(self, img, y, name):
+        self.name = name
         self.surf = img
         self.rect = self.surf.get_rect(center=(100, y))
         self.pos = (10, y)
@@ -264,12 +277,19 @@ class Tool:
             self.rect.y = self.dragPos[1] + (mouse_pos[1] - self.dragPos[1]) - self.mousey_in_rect
             self.someoneCured = False
         else:
+            def someone_cured(s):
+                s.cured()
+                self.moveBack = True
+                self.someoneCured = True
+
             for student in students:
                 if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured:
-                    student.cured()
-                    self.moveBack = True
-                    self.someoneCured = True
-                    break
+                    if self.name == 'syringe' and student.current_ani == motor_tick_animation:
+                        someone_cured(student)
+                        break
+                    elif self.name == 'haldol' and student.current_ani == voice_tick_animation:
+                        someone_cured(student)
+                        break
 
 
             if self.moveBack:
@@ -284,11 +304,11 @@ class Tool:
 
 
 
-syringe = Tool(syringeimg, 100)
-haldol = Tool(haldolimg, 250)
+syringe = Tool(syringeimg, 100, 'syringe')
+haldol = Tool(haldolimg, 250, 'haldol')
 
 
-lv1 = Level([(400, 600), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+lv1 = Level([(400, 600), (600, 600), (800, 600), (1000, 600)], (3, 8), 200)
 lv2 = Level([(400, 800), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv3 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv4 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
@@ -392,9 +412,6 @@ while 1:
     if app.gameState.startswith('lv'):
         screen.blit(classroomBg, (0, 0))
         screen.blit(toolBarSurf, toolBarRect)
-
-
-
 
         for level in levels:
             if app.gameState == level.name:
