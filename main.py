@@ -110,7 +110,6 @@ class Button:
         self.draw()
 
 
-
 levels = []
 class Level:
     def __init__(self, student_positions, student_time_range, lv_time, hearts_num=5):
@@ -121,6 +120,7 @@ class Level:
             self.students.add(Student(pos, student_time_range))
         for dx in range(hearts_num):
             self.hearts.append(Heart((300 + 105*dx, 50)))
+        self.mistakes = len(self.hearts)
         self.timer = lv_time
         self.start_time = time.time()
 
@@ -128,13 +128,17 @@ class Level:
 
         levels.append(self)
 
-
-
     def logic(self):
         for student in self.students:
             student.update()
-        for heart in self.hearts:
+        for index, heart in enumerate(self.hearts):
+            if index+1 > self.mistakes:
+                heart.img = heartEmptyimg
+                heart.rect = heart.img.get_rect(center=heart.rect.center)
             heart.draw()
+
+        if self.mistakes <= 0:
+            app.gameState = 'main menu'
 
         self.watch.change_time()
         self.watch.show_time()
@@ -219,7 +223,6 @@ class Student:
         self.animation()
         screen.blit(self.image, self.rect)
 
-
 class Heart:
     def __init__(self, pos):
         self.img = heartFullimg
@@ -262,6 +265,7 @@ class Tool:
         screen.blit(self.surf, self.rect)
 
     def drag(self, students):
+        global level
         mouse_pos = pygame.mouse.get_pos()
 
         if self.rect.collidepoint(mouse_pos) and pygame.mouse.get_pressed()[0]:
@@ -292,6 +296,7 @@ class Tool:
                 self.moveBack = True
                 self.someoneCured = True
 
+
             for student in students:
                 if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured:
                     if self.name == 'syringe' and student.current_ani == motor_tick_animation:
@@ -300,6 +305,9 @@ class Tool:
                     elif self.name == 'haldol' and student.current_ani == voice_tick_animation:
                         someone_cured(student)
                         break
+                    else:
+                        self.someoneCured = True
+                        level.mistakes -= 1
 
 
             if self.moveBack:
@@ -324,6 +332,7 @@ lv3 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv4 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv5 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv6 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+
 
 radius = 200
 level_buttons = []
@@ -414,7 +423,13 @@ while 1:
                 level_buttons[selectedLevel].surf.fill(BLACK)
 
         if level_buttons[selectedLevel].clickStage:
+
             app.gameState = f'lv{selectedLevel+1}'
+            for level in levels:
+                if app.gameState == level.name:
+                    for student in level.students:
+                        student.curedTime = time.time()
+
 
         rightArrowButton.update()
         leftArrowButton.update()
@@ -425,7 +440,6 @@ while 1:
 
         for level in levels:
             if app.gameState == level.name:
-
                 level.logic()
                 for tool in tools:
                     tool.drag(level.students)
