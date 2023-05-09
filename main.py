@@ -430,7 +430,6 @@ while 1:
                 for tool in tools:
                     tool.drag(level.students)
                     tool.draw()
-
     mouse.update()
     pygame.display.update()
 
