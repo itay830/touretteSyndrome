@@ -1,7 +1,6 @@
 import pygame
 import time
 import random
-#from math import sin, cos, atan2
 from sys import exit
 
 
@@ -250,6 +249,9 @@ class Tool:
         self.jump_counter = 0
         self.steps = 20
 
+        self.cooldown = 1
+        self.endWorkTime = time.time()
+
 
         self.moveBack = False
         self.someoneCured = False
@@ -295,10 +297,9 @@ class Tool:
                 s.cured()
                 self.moveBack = True
 
-
-
             for student in students:
-                if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured:
+                if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured and time.time() - self.endWorkTime > self.cooldown:
+                    self.endWorkTime = time.time()
                     if self.name == 'syringe' and student.current_ani == motor_tick_animation:
                         someone_cured(student)
                         break
@@ -308,7 +309,6 @@ class Tool:
                     else:
                         level.mistakes -= 1
                     self.someoneCured = True
-
 
             if self.moveBack:
                 # Alternate method :
