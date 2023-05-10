@@ -13,6 +13,8 @@ pygame.mouse.set_visible(False)
 clock = pygame.time.Clock()
 FPS = 60
 
+score_font = pygame.font.SysFont('verdana', 20, True)
+
 BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
 CENTER = (WIDTH/2, HEIGHT/2)
@@ -21,7 +23,9 @@ classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
 stand_animation = [pygame.image.load(f'resources/student/student_stand_animation/sprite_{num}.png') for num in range(0, 4)]
 voice_tick_animation = [pygame.image.load(f'resources/student/voice_tick_animation/sprite_{num}.png') for num in range(0, 4)]
 motor_tick_animation = [pygame.image.load(f'resources/student/motor_tick_animation/sprite_{num}.png') for num in range(0, 4)]
-symptoms_ani = [voice_tick_animation, motor_tick_animation]
+eye_tick_animation = [pygame.image.load(f'resources/student/eyes_tick_animation/sprite_{num}.png') for num in range(0, 4)]
+face_tick_animation = [pygame.image.load(f'resources/student/face_tick_animation/sprite_{num}.png') for num in range(0, 4)]
+symptoms_ani = [voice_tick_animation, motor_tick_animation, eye_tick_animation, face_tick_animation]
 
 clockimg = pygame.image.load('resources/clock/clock.png').convert_alpha()
 clock_time_font = pygame.font.SysFont('gadugi', 35, True, False)
@@ -32,7 +36,8 @@ toolBarRect = toolBarSurf.get_rect(topleft=(0, 0))
 
 syringeimg = pygame.image.load('resources/tools/syringe.png').convert_alpha()
 haldolimg = pygame.image.load('resources/tools/haldol.png').convert_alpha()
-
+clonidineimg = pygame.image.load('resources/tools/clonidine.png').convert_alpha()
+pimozideimg = pygame.image.load('resources/tools/pimozide.png').convert_alpha()
 
 startimg = pygame.image.load('resources/buttons/start.png').convert_alpha()
 optionsimg = pygame.image.load('resources/buttons/options.png').convert_alpha()
@@ -40,6 +45,7 @@ exitimg = pygame.image.load('resources/buttons/exit.png').convert_alpha()
 
 rightArrowimg = pygame.image.load('resources/buttons/rightArrow.png').convert_alpha()
 leftArrowimg = pygame.image.load('resources/buttons/leftArrow.png').convert_alpha()
+backArrowimg = pygame.image.load('resources/buttons/back_arrow.png').convert_alpha()
 
 heartFullimg = pygame.image.load('resources/heart/full_heart.png').convert_alpha()
 heartEmptyimg = pygame.image.load('resources/heart/empty_heart.png').convert_alpha()
@@ -48,12 +54,24 @@ class App:
     def __init__(self):
         self.gameState = 'main menu'
 
-    @staticmethod
-    def regular_events():
+    def regular_events(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
                 pygame.quit()
                 exit()
+
+            if e.type == pygame.KEYUP:
+                if e.key == pygame.K_ESCAPE:
+                    if self.gameState == 'main menu':
+                        pygame.quit()
+                        exit()
+
+                    elif self.gameState == 'options' or self.gameState == 'level menu':
+                        self.gameState = 'main menu'
+
+
+
+
 
 
 class Mouse(pygame.sprite.Sprite):
@@ -125,15 +143,22 @@ class Level:
 
         self.watch = Watch((1150, 100), 5, 10)
 
+        self.score = 0
+        self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
+
         levels.append(self)
 
     def logic(self):
+        self.show_score()
         for student in self.students:
             student.update()
         for index, heart in enumerate(self.hearts):
             if index+1 > self.mistakes:
                 heart.img = heartEmptyimg
                 heart.rect = heart.img.get_rect(center=heart.rect.center)
+            else:
+                heart.img = heartFullimg
+                #heart.rect = heart.img.get_rect(center=heart.rect.center)
             heart.draw()
 
         if self.mistakes <= 0:
@@ -141,6 +166,11 @@ class Level:
 
         self.watch.change_time()
         self.watch.show_time()
+
+    def show_score(self):
+        self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
+        self.rectTxt = self.scoreTxt.get_rect(center=(WIDTH-500, 60))
+        screen.blit(self.scoreTxt, self.rectTxt)
 
 
 class Watch:
@@ -154,7 +184,6 @@ class Watch:
 
         self.dt = 0
         self.startTime = time.time()
-
 
     def show_time(self):
         screen.blit(self.surf, self.rect)
@@ -240,7 +269,6 @@ class Tool:
         self.rect = self.surf.get_rect(center=(100, y))
         self.pos = (10, y)
 
-        self.station = pygame.Surface((1, 1)).get_rect(center=(50, y))
 
         # Alternate method :
         self.station_pos = (100, y)
@@ -295,10 +323,11 @@ class Tool:
         else:
             def someone_cured(s):
                 s.cured()
+                level.score += 100
                 self.moveBack = True
 
             for student in students:
-                if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured and time.time() - self.endWorkTime > self.cooldown:
+                if self.rect.colliderect(student.rect) and student.sick and not self.someoneCured and time.time() - self.endWorkTime > self.cooldown and student.rect.collidepoint(pygame.mouse.get_pos()):
                     self.endWorkTime = time.time()
                     if self.name == 'syringe' and student.current_ani == motor_tick_animation:
                         someone_cured(student)
@@ -306,8 +335,15 @@ class Tool:
                     elif self.name == 'haldol' and student.current_ani == voice_tick_animation:
                         someone_cured(student)
                         break
+                    elif self.name == 'clonidine' and student.current_ani == eye_tick_animation:
+                        someone_cured(student)
+                        break
+                    elif self.name == 'pimozide' and student.current_ani == face_tick_animation:
+                        someone_cured(student)
+                        break
                     else:
                         level.mistakes -= 1
+
                     self.someoneCured = True
 
             if self.moveBack:
@@ -324,7 +360,8 @@ class Tool:
 
 syringe = Tool(syringeimg, 100, 'syringe')
 haldol = Tool(haldolimg, 250, 'haldol')
-
+clonidine = Tool(clonidineimg, 400, 'clonidine')
+pimozide = Tool(pimozideimg, 550, 'pimozide')
 
 lv1 = Level([(400, 600), (600, 600), (800, 600), (1000, 600)], (3, 8), 200)
 lv2 = Level([(400, 800), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
@@ -343,6 +380,7 @@ for x in range(len(levels)):
 startButton = Button((CENTER[0], CENTER[1] - 200), startimg)
 optionsButton = Button((CENTER[0], CENTER[1]), optionsimg)
 exitButton = Button((CENTER[0], CENTER[1] + 200), exitimg)
+backArrowButton = Button((100, 100), backArrowimg)
 
 selectedLevel = 0
 selectedRadius = 0
@@ -381,7 +419,8 @@ while 1:
     if app.gameState == 'level menu':
         screen.fill(BLACK)
 
-
+        if backArrowButton.clickStage:
+            app.gameState = 'main menu'
 
         if arrowPass:
             if rightArrowButton.clickStage and selectedLevel < len(levels) - 1:
@@ -410,8 +449,6 @@ while 1:
                 pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius+selectedRadius)
             button.update()
 
-
-
         if not arrowPass:
             if jumps_counter == steps - 1:
                 jumps_counter = 0
@@ -423,16 +460,23 @@ while 1:
                 level_buttons[selectedLevel].surf.fill(BLACK)
 
         if level_buttons[selectedLevel].clickStage:
+            for tool in tools:
+                tool.rect.center = tool.station_pos
+                tool.endWorkTime = time.time()
 
             app.gameState = f'lv{selectedLevel+1}'
             for level in levels:
                 if app.gameState == level.name:
+                    level.score = 0
+                    level.mistakes = len(level.hearts)
+
                     for student in level.students:
                         student.curedTime = time.time()
-
+                    break
 
         rightArrowButton.update()
         leftArrowButton.update()
+        backArrowButton.update()
 
     if app.gameState.startswith('lv'):
         screen.blit(classroomBg, (0, 0))
@@ -444,6 +488,16 @@ while 1:
                 for tool in tools:
                     tool.drag(level.students)
                     tool.draw()
+
+    if app.gameState == 'options':
+        screen.fill(BLACK)
+        if backArrowButton.clickStage:
+            app.gameState = 'main menu'
+
+
+        backArrowButton.update()
+
+
     mouse.update()
     pygame.display.update()
 
