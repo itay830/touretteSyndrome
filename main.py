@@ -33,6 +33,7 @@ end_menu = False
 
 
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
+classroomBgOverBlur = pygame.image.load('resources/bgs/classroomOverBlur.png').convert_alpha()
 classroomBgBlur = pygame.image.load('resources/bgs/classroomBlur.png').convert_alpha()
 
 
@@ -505,7 +506,7 @@ while 1:
     app.regular_events()
 
     if app.gameState == 'main menu':
-        screen.fill(BLACK)
+        screen.blit(classroomBgOverBlur, (0, 0))
         startButton.update()
         optionsButton.update()
         exitButton.update()
