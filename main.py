@@ -1,4 +1,5 @@
 import pygame
+import json
 import time
 import random
 from sys import exit
@@ -32,6 +33,8 @@ end_menu = False
 
 
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
+classroomBgBlur = pygame.image.load('resources/bgs/classroomBlur.png').convert_alpha()
+
 
 stand_animation = [pygame.image.load(f'resources/student/student_stand_animation/sprite_{num}.png') for num in range(0, 4)]
 voice_tick_animation = [pygame.image.load(f'resources/student/voice_tick_animation/sprite_{num}.png') for num in range(0, 4)]
@@ -66,6 +69,23 @@ heartEmptyimg = pygame.image.load('resources/heart/empty_heart.png').convert_alp
 
 redSignimg = pygame.image.load('resources/signs/exclamation_mark.png').convert_alpha()
 
+
+lvlsData = {'lv1': [0, 0],
+            'lv2': [0, 0],
+            'lv3': [0, 0],
+            'lv4': [0, 0],
+            'lv5': [0, 0],
+            'lv6': [0, 0]}
+
+with open('data/levelData.txt') as f:
+    lvlsData = json.load(f)
+
+def exit_game():
+    with open('data/levelData.txt', 'w') as f:
+        json.dump(lvlsData, f)
+    pygame.quit()
+    exit()
+
 class App:
     def __init__(self):
         self.gameState = 'main menu'
@@ -73,14 +93,12 @@ class App:
     def regular_events(self):
         for e in pygame.event.get():
             if e.type == pygame.QUIT:
-                pygame.quit()
-                exit()
+                exit_game()
 
             if e.type == pygame.KEYUP:
                 if e.key == pygame.K_ESCAPE:
                     if self.gameState == 'main menu':
-                        pygame.quit()
-                        exit()
+                        exit_game()
 
                     elif self.gameState == 'options' or self.gameState == 'level menu':
                         self.gameState = 'main menu'
@@ -193,18 +211,27 @@ class Level:
             screen.blit(end_things_font.render(f"SCORE: {self.score}", True, (255, 255, 255)), (200, 300))
             screen.blit(end_things_font.render(f'TIME: {int(self.watch.endOfWorkTime - self.watch.startTime)}', True, (255, 255, 255)), (200, 400))
             if saveAndBackButton.clickStage:
+                end_menu = False
                 app.gameState = 'level menu'
 
         if int(self.watch.endOfWorkTime - self.watch.startTime) > self.timer:
+            time = round(self.watch.endOfWorkTime - self.watch.startTime, 3)
             end_menu = True
             screen.blit(pause_surf, pause_rect)
             saveAndBackButton.update()
             screen.blit(winMsg, winRect)
             screen.blit(end_things_font.render(f"SCORE: {self.score}", True, (255, 255, 255)), (200, 300))
-            screen.blit(end_things_font.render(f'TIME: {int(self.watch.endOfWorkTime - self.watch.startTime)}', True, (255, 255, 255)), (200, 400))
+            screen.blit(end_things_font.render(f'TIME: {time}', True, (255, 255, 255)), (200, 400))
             if saveAndBackButton.clickStage:
                 end_menu = False
                 app.gameState = 'level menu'
+                if self.score > lvlsData[self.name][0]:
+                    lvlsData[self.name][0] = self.score
+                    level_txts[int(self.name[-1]) - 1][0].data_update(f"BEST SCORE: {self.score}")
+
+                if time < lvlsData[self.name][1]:
+                    lvlsData[self.name][1] = time
+                    level_txts[int(self.name[-1])-1][1].data_update(f"BEST TIME: {time}")
 
     def show_score(self):
         self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
@@ -231,7 +258,7 @@ class Watch:
     def change_time(self):
         dseconds = int(time.time() - self.startTime)
         dminutes = dseconds//self.timeLap
-        if dseconds / self.timeLap < 10:
+        if dseconds < 10:
             self.txt = clock_time_font.render(f'{self.stime + dminutes}:0{dseconds % self.timeLap}', True, (255, 0, 0))
         else:
             self.txt = clock_time_font.render(f'{self.stime+dminutes}:{dseconds % self.timeLap}', True, (255, 0, 0))
@@ -416,7 +443,18 @@ class Tool:
                     self.jump_counter = 0
                     self.moveBack = False
 
+# Underground class ~~Mock
+class Text:
+    font1 = pygame.font.SysFont('Verdana', 25, True, True)
+    def __init__(self, data, cpos):
+        self.surf = Text.font1.render(data, True, WHITE)
+        self.rect = self.surf.get_rect(center=cpos)
 
+    def data_update(self, data):
+        self.surf = Text.font1.render(data, True, WHITE)
+
+    def draw(self):
+        screen.blit(self.surf, self.rect)
 
 syringe = Tool(syringeimg, 100, 'syringe')
 haldol = Tool(haldolimg, 250, 'haldol')
@@ -433,8 +471,10 @@ lv6 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 
 radius = 200
 level_buttons = []
+level_txts = []
 for x in range(len(levels)):
     level_buttons.append(Button((CENTER[0]+450*x, CENTER[1]), radius=radius))
+    level_txts.append([Text(f"BEST SCORE: {lvlsData[f'lv{x+1}'][0]}", (CENTER[0]+450*x, CENTER[1]+250)), Text(f"BEST TIME: {lvlsData[f'lv{x+1}'][1]}", (CENTER[0]+450*x, CENTER[1]+300))])
 
 
 startButton = Button((CENTER[0], CENTER[1] - 200), startimg)
@@ -474,11 +514,10 @@ while 1:
         if optionsButton.clickStage:
             app.gameState = 'options'
         if exitButton.clickStage:
-            pygame.quit()
-            exit()
+            exit_game()
 
     if app.gameState == 'level menu':
-        screen.fill(BLACK)
+        screen.blit(classroomBgBlur, (0, 0))
 
         if backArrowButton.clickStage:
             app.gameState = 'main menu'
@@ -509,6 +548,12 @@ while 1:
             else:
                 pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius+selectedRadius)
             button.update()
+
+        for txt in level_txts:
+            txt[0].rect.centerx += button_dx
+            txt[1].rect.centerx += button_dx
+            txt[0].draw()
+            txt[1].draw()
 
         if not arrowPass:
             if jumps_counter == steps - 1:
