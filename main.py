@@ -37,11 +37,11 @@ classroomBgOverBlur = pygame.image.load('resources/bgs/classroomOverBlur.png').c
 classroomBgBlur = pygame.image.load('resources/bgs/classroomBlur.png').convert_alpha()
 
 
-stand_animation = [pygame.image.load(f'resources/student/student_stand_animation/sprite_{num}.png') for num in range(0, 4)]
-voice_tick_animation = [pygame.image.load(f'resources/student/voice_tick_animation/sprite_{num}.png') for num in range(0, 4)]
-motor_tick_animation = [pygame.image.load(f'resources/student/motor_tick_animation/sprite_{num}.png') for num in range(0, 4)]
-eye_tick_animation = [pygame.image.load(f'resources/student/eyes_tick_animation/sprite_{num}.png') for num in range(0, 4)]
-face_tick_animation = [pygame.image.load(f'resources/student/face_tick_animation/sprite_{num}.png') for num in range(0, 4)]
+stand_animation = [pygame.image.load(f'resources/student/student_stand_animation/sprite_{num}.png').convert_alpha() for num in range(0, 4)]
+voice_tick_animation = [pygame.image.load(f'resources/student/voice_tick_animation/sprite_{num}.png').convert_alpha() for num in range(0, 4)]
+motor_tick_animation = [pygame.image.load(f'resources/student/motor_tick_animation/sprite_{num}.png').convert_alpha() for num in range(0, 4)]
+eye_tick_animation = [pygame.image.load(f'resources/student/eyes_tick_animation/sprite_{num}.png').convert_alpha() for num in range(0, 4)]
+face_tick_animation = [pygame.image.load(f'resources/student/face_tick_animation/sprite_{num}.png').convert_alpha() for num in range(0, 4)]
 symptoms_ani = [voice_tick_animation, motor_tick_animation, eye_tick_animation, face_tick_animation]
 
 clockimg = pygame.image.load('resources/clock/clock.png').convert_alpha()
@@ -70,6 +70,7 @@ heartEmptyimg = pygame.image.load('resources/heart/empty_heart.png').convert_alp
 
 redSignimg = pygame.image.load('resources/signs/exclamation_mark.png').convert_alpha()
 
+lvlsimgs = [pygame.transform.scale(pygame.image.load(f'resources/level_button_images/lv{num}.PNG').convert_alpha(), (400, 400)) for num in range(1, 7)]
 
 lvlsData = {'lv1': [0, 0],
             'lv2': [0, 0],
@@ -104,11 +105,15 @@ class App:
                     elif self.gameState == 'options' or self.gameState == 'level menu':
                         self.gameState = 'main menu'
 
+                '''if e.key == pygame.K_SPACE:
+                    if self.gameState == 'level menu':
+                        level_buttons[selectedLevel].clickStage = True'''
 
 
 
 
 
+mouse_collision_list = set()
 class Mouse(pygame.sprite.Sprite):
     def __init__(self):
         super().__init__()
@@ -117,11 +122,12 @@ class Mouse(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
 
     def update(self):
-        self.rect.topleft = pygame.mouse.get_pos()
-        if False:
-            self.image = self.images[1]
-        else:
+        for object in mouse_collision_list:
+            if object.rect.collidepoint(self.rect.topleft):
+                self.image = self.images[1]
+                break
             self.image = self.images[0]
+        self.rect.topleft = pygame.mouse.get_pos()
         screen.blit(self.image, self.rect)
 
 mouse = Mouse()
@@ -141,8 +147,10 @@ class Button:
         self.clickStage = None
         self.held = False
 
+        mouse_collision_list.add(self)
     def draw(self):
         screen.blit(self.surf, self.rect)
+
 
     def logic(self):
         if self.rect.colliderect(mouse.rect):
@@ -164,12 +172,12 @@ class Button:
 
 levels = []
 class Level:
-    def __init__(self, student_positions, student_time_range, lv_time, hearts_num=5):
+    def __init__(self, student_positions, student_time_range, student_sickness_max_time, lv_time, hearts_num=5):
         self.name = f"lv{len(levels)+1}"
-        self.students = set()
+        self.students = []
         self.hearts = []
         for pos in student_positions:
-            self.students.add(Student(pos, student_time_range))
+            self.students.append(Student(pos, student_time_range, student_sickness_max_time))
         for dx in range(hearts_num):
             self.hearts.append(Heart((300 + 105*dx, 50)))
         self.mistakes = len(self.hearts)
@@ -222,7 +230,7 @@ class Level:
             saveAndBackButton.update()
             screen.blit(winMsg, winRect)
             screen.blit(end_things_font.render(f"SCORE: {self.score}", True, (255, 255, 255)), (200, 300))
-            screen.blit(end_things_font.render(f'TIME: {time}', True, (255, 255, 255)), (200, 400))
+            screen.blit(end_things_font.render(f'TIME: {time}s', True, (255, 255, 255)), (200, 400))
             if saveAndBackButton.clickStage:
                 end_menu = False
                 app.gameState = 'level menu'
@@ -232,7 +240,7 @@ class Level:
 
                 if time < lvlsData[self.name][1]:
                     lvlsData[self.name][1] = time
-                    level_txts[int(self.name[-1])-1][1].data_update(f"BEST TIME: {time}")
+                    level_txts[int(self.name[-1])-1][1].data_update(f"BEST TIME: {time}s")
 
     def show_score(self):
         self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
@@ -269,7 +277,7 @@ class Watch:
 
 
 class Student:
-    def __init__(self, pos, timer, sickness_maxt=6):
+    def __init__(self, pos, timer, sickness_maxt=10):
         self.current_ani = stand_animation
         self.dtick = 0.1
         self.lowerTickRate = 0.01
@@ -378,9 +386,11 @@ class Tool:
         self.mousey_in_rect = 0
 
         tools.add(self)
+        mouse_collision_list.add(self)
 
     def draw(self):
         screen.blit(self.surf, self.rect)
+
 
     def drag(self, students):
         global level
@@ -462,20 +472,27 @@ haldol = Tool(haldolimg, 250, 'haldol')
 clonidine = Tool(clonidineimg, 400, 'clonidine')
 pimozide = Tool(pimozideimg, 550, 'pimozide')
 
-lv1 = Level([(400, 600), (600, 600), (800, 600), (1000, 600)], (3, 8), 5)
-lv2 = Level([(400, 800), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
-lv3 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
-lv4 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
-lv5 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
-lv6 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
+lv1 = Level([(600, 600), (800, 600), (1000, 600)], (3, 8), 10, 60)
+lv2 = Level([(400, 750), (700, 480), (1000, 800)], (2, 4), 8, 120)
+lv3 = Level([(450, 500), (650, 600), (850, 700), (1050, 800)], (3, 6), 10, 200)
+lv4 = Level([(700, 450), (600, 620), (700, 620), (800, 620), (700, 750)], (3, 8), 13, 200)
+lv5 = Level([(1350, 450), (1350, 600), (1350, 750), (1350, 900)], (3, 8), 8, 200)
+lv6 = Level([(400, 600), (500, 600), (600, 600), (700, 600), (800, 600), (900, 600)], (3, 8), 15, 200)
 
 
 radius = 200
 level_buttons = []
 level_txts = []
-for x in range(len(levels)):
+'''for x in range(0, len(levels)):
     level_buttons.append(Button((CENTER[0]+450*x, CENTER[1]), radius=radius))
+    level_txts.append([Text(f"BEST SCORE: {lvlsData[f'lv{x+1}'][0]}", (CENTER[0]+450*x, CENTER[1]+250)), Text(f"BEST TIME: {lvlsData[f'lv{x+1}'][1]}s", (CENTER[0]+450*x, CENTER[1]+300))])
+'''
+
+for x in range(0, len(levels)):
+    level_buttons.append(Button((CENTER[0]+450*x, CENTER[1]), lvlsimgs[x]))
     level_txts.append([Text(f"BEST SCORE: {lvlsData[f'lv{x+1}'][0]}", (CENTER[0]+450*x, CENTER[1]+250)), Text(f"BEST TIME: {lvlsData[f'lv{x+1}'][1]}", (CENTER[0]+450*x, CENTER[1]+300))])
+
+
 
 
 startButton = Button((CENTER[0], CENTER[1] - 200), startimg)
@@ -485,7 +502,7 @@ backArrowButton = Button((100, 100), backArrowimg)
 saveAndBackButton = Button((CENTER[0], CENTER[1] + 300), save_and_backimg)
 
 selectedLevel = 0
-selectedRadius = 0
+dradius = 0
 button_dx = 0
 steps = 10
 jumps_counter = 0
@@ -495,8 +512,8 @@ arrowPass = True
 
 
 def button_calc_dist():
-    global selectedRadius
-    selectedRadius = 0
+    global dradius
+    dradius = 0
     return False, 0, (CENTER[0] - level_buttons[selectedLevel].rect.centerx) / steps
 
 
@@ -540,15 +557,27 @@ while 1:
                 selectedLevel = len(levels) - 1
                 arrowPass, jumps_counter, button_dx = button_calc_dist()
 
-        for index, button in enumerate(level_buttons):
+        '''for index, button in enumerate(level_buttons):
             button.rect.centerx += button_dx
             button.surf.fill(BLACK)
 
             if not level_buttons[selectedLevel] is button:
                 pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius)
             else:
-                pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius+selectedRadius)
+                pygame.draw.circle(button.surf, (67, 67, 67), (button.surf.get_width() / 2, button.surf.get_height() / 2), radius=radius+dradius)
+            button.update()'''
+
+        for index, button in enumerate(level_buttons):
+            button.rect.centerx += button_dx
+
+            if not level_buttons[selectedLevel] is button:
+                button.surf = pygame.transform.scale(button.surf, (radius*2, radius*2))
+            else:
+                button.surf = pygame.transform.scale(button.surf, (button.rect.w + dradius, button.rect.h + dradius))
             button.update()
+
+
+
 
         for txt in level_txts:
             txt[0].rect.centerx += button_dx
@@ -561,10 +590,9 @@ while 1:
                 jumps_counter = 0
                 button_dx = 0
                 arrowPass = True
-                selectedRadius += 25
+                dradius += 25
             else:
                 jumps_counter += 1
-                level_buttons[selectedLevel].surf.fill(BLACK)
 
         if level_buttons[selectedLevel].clickStage:
             for tool in tools:
@@ -595,11 +623,11 @@ while 1:
 
         for level in levels:
             if app.gameState == level.name:
+                level.logic()
                 for tool in tools:
                     if not end_menu:
                         tool.drag(level.students)
                     tool.draw()
-                level.logic()
 
 
     if app.gameState == 'options':
