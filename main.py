@@ -18,7 +18,7 @@ CENTER = (WIDTH/2, HEIGHT/2)
 
 score_font = pygame.font.SysFont('verdana', 20, True)
 msg_font = pygame.font.SysFont('Verdana', 200, True)
-end_time_font = pygame.font.SysFont('Verdana', 80, True)
+end_things_font = pygame.font.SysFont('Verdana', 80, True)
 
 msg_pos = (CENTER[0], 200)
 winMsg = msg_font.render('YOU WON', False, WHITE)
@@ -26,9 +26,9 @@ loseMsg = msg_font.render('YOU LOST', False, (255, 0, 0))
 loseRect = loseMsg.get_rect(center=msg_pos)
 winRect = winMsg.get_rect(center=msg_pos)
 pause_surf = pygame.Surface((WIDTH, HEIGHT))
-pause_surf.set_alpha(150)
+pause_surf.set_alpha(190)
 pause_rect = pause_surf.get_rect(topleft=(0, 0))
-
+end_menu = False
 
 
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
@@ -55,6 +55,7 @@ pimozideimg = pygame.image.load('resources/tools/pimozide.png').convert_alpha()
 startimg = pygame.image.load('resources/buttons/start.png').convert_alpha()
 optionsimg = pygame.image.load('resources/buttons/options.png').convert_alpha()
 exitimg = pygame.image.load('resources/buttons/exit.png').convert_alpha()
+save_and_backimg = pygame.image.load('resources/buttons/save_and_back.png').convert_alpha()
 
 rightArrowimg = pygame.image.load('resources/buttons/rightArrow.png').convert_alpha()
 leftArrowimg = pygame.image.load('resources/buttons/leftArrow.png').convert_alpha()
@@ -156,7 +157,7 @@ class Level:
         self.timer = lv_time
         self.start_time = time.time()
 
-        self.watch = Watch((1150, 100), 9, 15)
+        self.watch = Watch((1150, 100), 9)
 
         self.score = 0
         self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
@@ -165,13 +166,14 @@ class Level:
         levels.append(self)
 
     def logic(self):
+        global end_menu
         self.show_score()
-        if self.mistakes > 0:
+        if not end_menu:
             self.watch.change_time()
         self.watch.show_time()
 
         for student in self.students:
-            if self.mistakes > 0:
+            if not end_menu:
                 student.update()
             else:
                 student.draw()
@@ -184,11 +186,25 @@ class Level:
             heart.draw()
 
         if self.mistakes <= 0:
+            end_menu = True
             screen.blit(pause_surf, pause_rect)
+            saveAndBackButton.update()
             screen.blit(loseMsg, loseRect)
-            screen.blit(end_time_font.render(f'TIME: {int(self.watch.endOfWorkTime - self.watch.startTime)}', True, (255, 255, 255)), (400, 600))
+            screen.blit(end_things_font.render(f"SCORE: {self.score}", True, (255, 255, 255)), (200, 300))
+            screen.blit(end_things_font.render(f'TIME: {int(self.watch.endOfWorkTime - self.watch.startTime)}', True, (255, 255, 255)), (200, 400))
+            if saveAndBackButton.clickStage:
+                app.gameState = 'level menu'
 
-
+        if int(self.watch.endOfWorkTime - self.watch.startTime) > self.timer:
+            end_menu = True
+            screen.blit(pause_surf, pause_rect)
+            saveAndBackButton.update()
+            screen.blit(winMsg, winRect)
+            screen.blit(end_things_font.render(f"SCORE: {self.score}", True, (255, 255, 255)), (200, 300))
+            screen.blit(end_things_font.render(f'TIME: {int(self.watch.endOfWorkTime - self.watch.startTime)}', True, (255, 255, 255)), (200, 400))
+            if saveAndBackButton.clickStage:
+                end_menu = False
+                app.gameState = 'level menu'
 
     def show_score(self):
         self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
@@ -197,11 +213,10 @@ class Level:
 
 
 class Watch:
-    def __init__(self, pos, stime, etime):
+    def __init__(self, pos, stime):
         self.surf = clockimg
         self.rect = self.surf.get_rect(center=pos)
         self.stime = stime
-        self.etime = etime
         self.txt = clock_time_font.render(f'{self.stime}am', True, (255, 0, 0))
         self.txtrect = self.txt.get_rect(center=self.rect.center)
 
@@ -216,7 +231,7 @@ class Watch:
     def change_time(self):
         dseconds = int(time.time() - self.startTime)
         dminutes = dseconds//self.timeLap
-        if dseconds / self.timeLap < self.timeLap:
+        if dseconds / self.timeLap < 10:
             self.txt = clock_time_font.render(f'{self.stime + dminutes}:0{dseconds % self.timeLap}', True, (255, 0, 0))
         else:
             self.txt = clock_time_font.render(f'{self.stime+dminutes}:{dseconds % self.timeLap}', True, (255, 0, 0))
@@ -226,7 +241,7 @@ class Watch:
 
 
 class Student:
-    def __init__(self, pos, timer, sickness_maxt=3):
+    def __init__(self, pos, timer, sickness_maxt=6):
         self.current_ani = stand_animation
         self.dtick = 0.1
         self.lowerTickRate = 0.01
@@ -408,7 +423,7 @@ haldol = Tool(haldolimg, 250, 'haldol')
 clonidine = Tool(clonidineimg, 400, 'clonidine')
 pimozide = Tool(pimozideimg, 550, 'pimozide')
 
-lv1 = Level([(400, 600), (600, 600), (800, 600), (1000, 600)], (3, 8), 200)
+lv1 = Level([(400, 600), (600, 600), (800, 600), (1000, 600)], (3, 8), 5)
 lv2 = Level([(400, 800), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv3 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
 lv4 = Level([(400, 900), (500, 600), (600, 600), (700, 600)], (3, 8), 200)
@@ -426,6 +441,7 @@ startButton = Button((CENTER[0], CENTER[1] - 200), startimg)
 optionsButton = Button((CENTER[0], CENTER[1]), optionsimg)
 exitButton = Button((CENTER[0], CENTER[1] + 200), exitimg)
 backArrowButton = Button((100, 100), backArrowimg)
+saveAndBackButton = Button((CENTER[0], CENTER[1] + 300), save_and_backimg)
 
 selectedLevel = 0
 selectedRadius = 0
@@ -534,7 +550,7 @@ while 1:
         for level in levels:
             if app.gameState == level.name:
                 for tool in tools:
-                    if level.mistakes > 0:
+                    if not end_menu:
                         tool.drag(level.students)
                     tool.draw()
                 level.logic()
