@@ -3,7 +3,6 @@ import time
 import random
 from sys import exit
 
-
 pygame.init()
 
 WIDTH, HEIGHT = 1400, 900
@@ -13,11 +12,25 @@ pygame.mouse.set_visible(False)
 clock = pygame.time.Clock()
 FPS = 60
 
-score_font = pygame.font.SysFont('verdana', 20, True)
-
-BLACK = (0, 0, 0)
 WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
 CENTER = (WIDTH/2, HEIGHT/2)
+
+score_font = pygame.font.SysFont('verdana', 20, True)
+msg_font = pygame.font.SysFont('Verdana', 200, True)
+end_time_font = pygame.font.SysFont('Verdana', 80, True)
+
+msg_pos = (CENTER[0], 200)
+winMsg = msg_font.render('YOU WON', False, WHITE)
+loseMsg = msg_font.render('YOU LOST', False, (255, 0, 0))
+loseRect = loseMsg.get_rect(center=msg_pos)
+winRect = winMsg.get_rect(center=msg_pos)
+pause_surf = pygame.Surface((WIDTH, HEIGHT))
+pause_surf.set_alpha(150)
+pause_rect = pause_surf.get_rect(topleft=(0, 0))
+
+
+
 classroomBg = pygame.image.load('resources/bgs/classroom.png').convert_alpha()
 
 stand_animation = [pygame.image.load(f'resources/student/student_stand_animation/sprite_{num}.png') for num in range(0, 4)]
@@ -49,6 +62,8 @@ backArrowimg = pygame.image.load('resources/buttons/back_arrow.png').convert_alp
 
 heartFullimg = pygame.image.load('resources/heart/full_heart.png').convert_alpha()
 heartEmptyimg = pygame.image.load('resources/heart/empty_heart.png').convert_alpha()
+
+redSignimg = pygame.image.load('resources/signs/exclamation_mark.png').convert_alpha()
 
 class App:
     def __init__(self):
@@ -141,31 +156,39 @@ class Level:
         self.timer = lv_time
         self.start_time = time.time()
 
-        self.watch = Watch((1150, 100), 5, 10)
+        self.watch = Watch((1150, 100), 9, 15)
 
         self.score = 0
         self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
+
 
         levels.append(self)
 
     def logic(self):
         self.show_score()
+        if self.mistakes > 0:
+            self.watch.change_time()
+        self.watch.show_time()
+
         for student in self.students:
-            student.update()
+            if self.mistakes > 0:
+                student.update()
+            else:
+                student.draw()
+
         for index, heart in enumerate(self.hearts):
             if index+1 > self.mistakes:
                 heart.img = heartEmptyimg
-                heart.rect = heart.img.get_rect(center=heart.rect.center)
             else:
                 heart.img = heartFullimg
-                #heart.rect = heart.img.get_rect(center=heart.rect.center)
             heart.draw()
 
         if self.mistakes <= 0:
-            app.gameState = 'main menu'
+            screen.blit(pause_surf, pause_rect)
+            screen.blit(loseMsg, loseRect)
+            screen.blit(end_time_font.render(f'TIME: {int(self.watch.endOfWorkTime - self.watch.startTime)}', True, (255, 255, 255)), (400, 600))
 
-        self.watch.change_time()
-        self.watch.show_time()
+
 
     def show_score(self):
         self.scoreTxt = clock_time_font.render(f'SCORE: {self.score}', True, (255, 255, 255))
@@ -176,29 +199,34 @@ class Level:
 class Watch:
     def __init__(self, pos, stime, etime):
         self.surf = clockimg
+        self.rect = self.surf.get_rect(center=pos)
         self.stime = stime
         self.etime = etime
-        self.rect = self.surf.get_rect(center=pos)
         self.txt = clock_time_font.render(f'{self.stime}am', True, (255, 0, 0))
         self.txtrect = self.txt.get_rect(center=self.rect.center)
 
-        self.dt = 0
         self.startTime = time.time()
+        self.endOfWorkTime = time.time()
+        self.timeLap = 60
 
     def show_time(self):
         screen.blit(self.surf, self.rect)
         screen.blit(self.txt, self.txtrect)
 
     def change_time(self):
-        if int((time.time() - self.startTime)) >= 60:
-            self.dt += 1
-            self.startTime = time.time()
-        self.txt = clock_time_font.render(f'{self.stime + self.dt}am', True, (255, 0, 0))
+        dseconds = int(time.time() - self.startTime)
+        dminutes = dseconds//self.timeLap
+        if dseconds / self.timeLap < self.timeLap:
+            self.txt = clock_time_font.render(f'{self.stime + dminutes}:0{dseconds % self.timeLap}', True, (255, 0, 0))
+        else:
+            self.txt = clock_time_font.render(f'{self.stime+dminutes}:{dseconds % self.timeLap}', True, (255, 0, 0))
         self.txtrect = self.txt.get_rect(center=self.rect.center)
+        self.endOfWorkTime = time.time()
+
 
 
 class Student:
-    def __init__(self, pos, timer):
+    def __init__(self, pos, timer, sickness_maxt=3):
         self.current_ani = stand_animation
         self.dtick = 0.1
         self.lowerTickRate = 0.01
@@ -212,11 +240,15 @@ class Student:
         self.curedTime = time.time()
         self.sick = False
 
+        self.timeOfSickness = time.time()
+        self.maxSicknessTime = sickness_maxt
+        self.redSighnImg = redSignimg
+        self.redSighnRect = self.redSighnImg.get_rect(center=(self.rect.centerx, self.rect.centery-self.rect.height/2-self.redSighnImg.get_height()/2-20))
+
     def symptoms_showing(self):
         self.lowerTickRate = 0.1
         self.upperTickRate = 0.3
         self.change_animation(random.choice(symptoms_ani))
-        self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = True
 
     def cured(self):
@@ -225,12 +257,13 @@ class Student:
         self.lowerTickRate = 0.01
         self.upperTickRate = 0.2
         self.change_animation(stand_animation)
-        self.rect = self.image.get_rect(center=self.rect.center)
         self.sick = False
 
     def timer(self):
         if time.time() - self.curedTime > self.symptomDelay and not self.sick:
             self.symptoms_showing()
+        if not self.sick:
+            self.timeOfSickness = time.time()
 
     def change_animation(self, ani):
         self.current_ani = ani
@@ -240,16 +273,29 @@ class Student:
     def animation(self):
         self.dtick = round(random.uniform(self.lowerTickRate, self.upperTickRate), 2)
         self.image = self.current_ani[int(self.ani_tick) % len(self.current_ani)]
-        self.rect = self.image.get_rect(center=self.rect.center)
 
         self.ani_tick += self.dtick
         if self.ani_tick > len(self.current_ani):
             self.ani_tick = 0
 
+    def death_check(self):
+        dt = time.time() - self.timeOfSickness
+        if dt > self.maxSicknessTime:
+            level.mistakes = 0
+        else:
+            alpha = int(dt / self.maxSicknessTime * 255)
+            self.redSighnImg.set_alpha(alpha)
+            self.image.set_alpha(255 - alpha)
+
+    def draw(self):
+        screen.blit(self.image, self.rect)
+        screen.blit(self.redSighnImg, self.redSighnRect)
+
     def update(self):
         self.timer()
         self.animation()
-        screen.blit(self.image, self.rect)
+        self.death_check()
+        self.draw()
 
 class Heart:
     def __init__(self, pos):
@@ -270,7 +316,6 @@ class Tool:
         self.pos = (10, y)
 
 
-        # Alternate method :
         self.station_pos = (100, y)
         self.dx = 0
         self.dy = 0
@@ -471,8 +516,12 @@ while 1:
                     level.mistakes = len(level.hearts)
 
                     for student in level.students:
+                        student.timeOfSickness = time.time()
+                        student.cured()
                         student.curedTime = time.time()
+                    level.watch.startTime = time.time()
                     break
+
 
         rightArrowButton.update()
         leftArrowButton.update()
@@ -484,10 +533,12 @@ while 1:
 
         for level in levels:
             if app.gameState == level.name:
-                level.logic()
                 for tool in tools:
-                    tool.drag(level.students)
+                    if level.mistakes > 0:
+                        tool.drag(level.students)
                     tool.draw()
+                level.logic()
+
 
     if app.gameState == 'options':
         screen.fill(BLACK)
